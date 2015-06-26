@@ -1,2 +1,2 @@
-include README.md *.py
+include README.md LICENSE *.py
 recursive-include openstack_project_create *.py

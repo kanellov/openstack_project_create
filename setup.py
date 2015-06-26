@@ -8,7 +8,7 @@ setup(
     author_email='contact@kanellov.com',
     packages=find_packages(),
     url='https://github.com/kanellov/openstack_project_create',
-    license='BSD licence, see LICENCE.txt',
+    license='BSD licence, see LICENCE',
     description='Creates user openstack project on first login',
     long_description=open('README.md').read(),
     zip_safe=False,
