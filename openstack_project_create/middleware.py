@@ -11,12 +11,10 @@ import logging
 LOG = logging.getLogger('django')
 CONFIG = getattr(settings, 'CREATE_PROJECT')
 
-
 def has_in_url_path(url, sub):
     """Test if the `sub` string is in the `url` path."""
     scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
     return sub in path
-
 
 def url_path_replace(url, old, new, count=None):
     """Return a copy of url with replaced path.
@@ -32,51 +30,44 @@ def url_path_replace(url, old, new, count=None):
     return urlparse.urlunsplit((
         scheme, netloc, path.replace(old, new, *args), query, fragment))
 
-
-def get_keystone_client(
-        user_domain_name,
-        username,
-        password,
-        project_name=None,
-        auth_url=None):
+def get_keystone_client(user_domain_name, username, password, project_name = None, auth_url = None):
     insecure = getattr(settings, 'OPENSTACK_SSL_NO_VERIFY', False)
     ca_cert = getattr(settings, 'OPENSTACK_SSL_CACERT', None)
-    if auth_url is None:
+    if auth_url == None:
         auth_url = getattr(settings, 'OPENSTACK_KEYSTONE_URL', None)
 
     if has_in_url_path(auth_url, "/v2.0"):
         auth_url = url_path_replace(auth_url, "/v2.0", "/v3", 1)
 
     client = client_v3.Client(
-        user_domain_name=user_domain_name,
-        username=username,
-        password=password,
-        project_name=project_name,
-        auth_url=auth_url,
-        insecure=insecure,
-        cacert=ca_cert,
-        debug=settings.DEBUG)
+            user_domain_name=user_domain_name,
+            username=username,
+            password=password,
+            project_name=project_name,
+            auth_url=auth_url,
+            insecure=insecure,
+            cacert=ca_cert,
+            debug=settings.DEBUG)
     client.management_url = auth_url
 
-    return client
-
+    return  client
 
 class CreateProject(object):
 
     _user_client = None
     _admin_client = None
 
-    def user_client(self, request):
-        if self._user_client is None:
+    def user_client(self, request, domain):
+        if self._user_client == None:
             self._user_client = get_keystone_client(
-                user_domain_name=request.POST.get('domain'),
+                user_domain_name=domain,
                 username=request.POST.get('username'),
                 password=request.POST.get('password'),
                 auth_url=request.POST.get('region'))
         return self._user_client
 
     def admin_client(self):
-        if self._admin_client is None:
+        if self._admin_client == None:
             self._admin_client = get_keystone_client(
                 user_domain_name=CONFIG.get('ADMIN_DOMAIN_NAME', None),
                 username=CONFIG.get('ADMIN_USERNAME', None),
@@ -85,14 +76,18 @@ class CreateProject(object):
                 auth_url=CONFIG.get('ADMIN_AUTH_URL', None))
         return self._admin_client
 
+
     def process_request(self, request):
         current_url = resolve(request.path_info).url_name
         affected_domains = CONFIG.get('AFFECTED_DOMAINS', [])
-        domain = request.POST.get('domain', False)
+        if getattr(settings, 'OPENSTACK_KEYSTONE_MULTIDOMAIN_SUPPORT', False):
+            domain = request.POST.get('domain')
+        else:
+            domain = getattr(settings, 'OPENSTACK_KEYSTONE_DEFAULT_DOMAIN')
         if request.method == 'POST' and domain in affected_domains and current_url == 'login':
             project = None
             try:
-                user_client = self.user_client(request)
+                user_client = self.user_client(request, domain);
                 auth_ref = user_client.auth_ref
                 projects = user_client.projects.list(user=auth_ref.user_id)
                 if not projects:
@@ -117,16 +112,13 @@ class CreateProject(object):
                         sender=self, project=project, user_id=auth_ref.user_id)
                     if not all(map(lambda res: res[1], responses)):
                         raise Exception
-                    LOG.debug(
-                        "Project created for user %s" %
-                        request.POST.get('username'))
+                    LOG.debug("Project created for user %s" % request.POST.get('username'))
             except Exception as e:
-                if project is not None:
+                if project != None:
                     admin_client.projects.delete(project.id)
 
-                LOG.error(
-                    "Unable to create project for user %s" %
-                    request.POST.get('username'))
+                LOG.error("Unable to create project for user %s" % request.POST.get('username'))
                 raise
 
         return None
+
