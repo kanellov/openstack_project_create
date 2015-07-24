@@ -1,7 +1,3 @@
-# Installation
-
-    pip install hg+http://10.2.46.23/source/schcloud/project_creator/@default#egg=openstack_project_create
-
 # Configuration
 Insert into ```/etc/openstack-dashboard/local_settings.py``` the following and change
 to apropriate values.
