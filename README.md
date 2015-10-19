@@ -1,3 +1,7 @@
+# No longer maintained
+
+A newer version in https://bitbucket.org/kanellov/openstack-self-registration/overview
+
 # Configuration
 Insert into ```/etc/openstack-dashboard/local_settings.py``` the following and change
 to apropriate values.
